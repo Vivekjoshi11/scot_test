@@ -124,3 +124,21 @@ Define the necessary environment variables for both the frontend and backend. Sa
 
 
 
+	Display time zone on top bar.
+![alt text](image.png)
+ 
+Add client button and modal.
+![alt text](image-1.png)
+
+ 
+
+When create new Employee, display form validation message(under each field) instead of alert if some fields are empty for both employee and client
+![alt text](image-2.png)
+![alt text](image-3.png)
+
+ 
+ 
+Edit client
+![alt text](image-4.png)
+ 
+
