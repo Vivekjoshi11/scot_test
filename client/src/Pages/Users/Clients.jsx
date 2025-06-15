@@ -1,18 +1,90 @@
+
 import React, { useEffect, useState } from "react";
 import Topbar from "./Topbar";
 import { Table } from "../../Components";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 import { getClients, getEmployeeClients } from "../../redux/action/user";
-import { Tooltip, Divider } from "@mui/material";
-import { PiTrashLight, PiXLight, PiNotepad, PiPencilLight } from "react-icons/pi";
+import { getClientsReducer, getUserReducer } from "../../redux/reducer/user";
+import { Tooltip, styled } from "@mui/material";
+import { PiDotsThreeOutlineThin, PiTrashLight } from "react-icons/pi";
+import { IoOpenOutline } from "react-icons/io5";
+import { CiEdit } from "react-icons/ci";
+import { Dropdown, Menu, MenuButton, MenuItem, menuItemClasses } from "@mui/base";
 import Filter from "./Filter";
 import DeleteClient from "./Delete";
-import { TextField, Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
-import Slide from "@mui/material/Slide";
+import EditClient from "./EditClient";
+import CreateClient from "./CreateClient";
 
-const Transition = React.forwardRef(function Transition(props, ref) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+const blue = {
+  100: "#DAECFF",
+  200: "#99CCF3",
+  400: "#3399FF",
+  500: "#007FFF",
+  600: "#0072E5",
+  900: "#003A75",
+};
+
+const grey = {
+  50: "#f6f8fa",
+  100: "#eaeef2",
+  200: "#d0d7de",
+  300: "#afb8c1",
+  400: "#8c959f",
+  500: "#6e7781",
+  600: "#57606a",
+  700: "#424a53",
+  800: "#32383f",
+  900: "#24292f",
+};
+
+const StyledListbox = styled("ul")(
+  ({ theme }) => `
+      font-family: IBM Plex Sans, sans-serif;
+      font-size: 0.875rem;
+      box-sizing: border-box;
+      transition:all;
+      padding: 10px;
+      margin: 12px 0;
+      width: auto;
+      border-radius: 12px;
+      overflow: auto;
+      outline: 0px;
+      background: ${theme.palette.mode === "dark" ? grey[900] : "#fff"};
+      border: 1px solid ${theme.palette.mode === "dark" ? grey[700] : grey[200]};
+      color: ${theme.palette.mode === "dark" ? grey[300] : grey[900]};
+      box-shadow: 0px 4px 30px ${theme.palette.mode === "dark" ? grey[900] : grey[200]};
+      z-index: 1;
+      `
+);
+
+const StyledMenuItem = styled(MenuItem)(
+  ({ theme }) => `
+      list-style: none;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      &:last-of-type {
+        border-bottom: none;
+      }
+    
+      &.${menuItemClasses.focusVisible} {
+        outline: 3px solid ${theme.palette.mode === "dark" ? blue[600] : blue[200]};
+        background-color: ${theme.palette.mode === "dark" ? grey[800] : grey[100]};
+        color: ${theme.palette.mode === "dark" ? grey[300] : grey[900]};
+      }
+    
+      &.${menuItemClasses.disabled} {
+        color: ${theme.palette.mode === "dark" ? grey[700] : grey[400]};
+      }
+    
+      &:hover:not(.${menuItemClasses.disabled}) {
+        background-color: ${theme.palette.mode === "dark" ? grey[800] : grey[100]};
+        color: ${theme.palette.mode === "dark" ? grey[300] : grey[900]};
+      }
+      `
+);
 
 const Clients = () => {
   const dispatch = useDispatch();
@@ -31,10 +103,10 @@ const Clients = () => {
       ),
     },
     {
+      headerClassName: "super-app-theme--header",
       field: "Client Name",
       headerName: "Client Name",
       width: 200,
-      headerClassName: "super-app-theme--header",
       renderCell: (params) => (
         <div className="capitalize text-[#20aee3] font-primary hover:text-[#007bff] cursor-pointer font-light">
           {params.row.firstName} {params.row.lastName}
@@ -44,29 +116,23 @@ const Clients = () => {
     {
       field: "username",
       headerName: "Client Username",
-      width: 200,
       headerClassName: "super-app-theme--header",
-      renderCell: (params) => (
-        <div className="capitalize font-primary">{params.row.username}</div>
-      ),
+      width: 200,
+      renderCell: (params) => <div className="capitalize font-primary">{params.row.username}</div>,
     },
     {
       field: "phone",
       headerName: "Phone",
-      width: 150,
       headerClassName: "super-app-theme--header",
-      renderCell: (params) => (
-        <div className="font-primary">{params.row.phone}</div>
-      ),
+      width: 150,
+      renderCell: (params) => <div className="font-primary">{params.row.phone}</div>,
     },
     {
       field: "email",
       headerName: "Email",
-      width: 220,
       headerClassName: "super-app-theme--header",
-      renderCell: (params) => (
-        <div className="font-primary">{params.row.email}</div>
-      ),
+      width: 220,
+      renderCell: (params) => <div className="font-primary">{params.row?.email}</div>,
     },
     {
       field: "action",
@@ -77,7 +143,6 @@ const Clients = () => {
         <div className="flex gap-[10px]">
           {loggedUser?.role !== "employee" && (
             <>
-              
               <Tooltip placement="top" title="Delete" arrow>
                 <PiTrashLight
                   onClick={() => handleOpenDeleteModal(params.row._id)}
@@ -85,9 +150,9 @@ const Clients = () => {
                 />
               </Tooltip>
               <Tooltip placement="top" title="Edit" arrow>
-                <PiPencilLight
+                <CiEdit
                   onClick={() => handleOpenEditModal(params.row)}
-                  className="cursor-pointer text-green-500 text-[23px] hover:text-green-400"
+                  className="cursor-pointer text-green-500 text-[23px] hover:text-green-600"
                 />
               </Tooltip>
             </>
@@ -97,36 +162,11 @@ const Clients = () => {
     },
   ];
 
+  const [openEditModal, setOpenEditModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [openFilters, setOpenFilters] = useState(false);
-  const [openClientModal, setOpenClientModal] = useState(false);
-  const [openEditModal, setOpenEditModal] = useState(false);
-  const [clientForm, setClientForm] = useState({
-    uid: "",
-    firstName: "",
-    lastName: "",
-    username: "",
-    phone: "",
-    email: "",
-  });
-  const [editClientForm, setEditClientForm] = useState({
-    _id: "",
-    uid: "",
-    firstName: "",
-    lastName: "",
-    username: "",
-    phone: "",
-    email: "",
-  });
-  const [errors, setErrors] = useState({
-    uid: "",
-    firstName: "",
-    lastName: "",
-    username: "",
-    phone: "",
-    email: "",
-  });
+  const [openAddModal, setOpenAddModal] = useState(false);
 
   useEffect(() => {
     if (loggedUser?.role === "employee") {
@@ -136,8 +176,13 @@ const Clients = () => {
     }
   }, [dispatch, loggedUser]);
 
-  const handleClickOpen = () => {
-    setOpenClientModal(true);
+  const handleOpenAddModal = () => {
+    setOpenAddModal(true);
+  };
+
+  const handleOpenEditModal = (client) => {
+    dispatch(getUserReducer(client));
+    setOpenEditModal(true);
   };
 
   const handleOpenDeleteModal = (userId) => {
@@ -145,357 +190,18 @@ const Clients = () => {
     setOpenDeleteModal(true);
   };
 
-  const handleOpenEditModal = (client) => {
-    setEditClientForm({
-      _id: client._id,
-      uid: client.uid || "",
-      firstName: client.firstName || "",
-      lastName: client.lastName || "",
-      username: client.username || "",
-      phone: client.phone || "",
-      email: client.email || "",
-    });
-    setOpenEditModal(true);
-  };
-
-  const handleClose = () => {
-    setOpenClientModal(false);
-    setOpenEditModal(false);
-    setClientForm({
-      uid: "",
-      firstName: "",
-      lastName: "",
-      username: "",
-      phone: "",
-      email: "",
-    });
-    setEditClientForm({
-      _id: "",
-      uid: "",
-      firstName: "",
-      lastName: "",
-      username: "",
-      phone: "",
-      email: "",
-    });
-    setErrors({
-      uid: "",
-      firstName: "",
-      lastName: "",
-      username: "",
-      phone: "",
-      email: "",
-    });
-  };
-
-  const handleChange = (field, value, isEdit = false) => {
-    const setForm = isEdit ? setEditClientForm : setClientForm;
-    setForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-    setErrors((prev) => ({
-      ...prev,
-      [field]: "",
-    }));
-  };
-
-  const validateForm = (form) => {
-    const newErrors = {};
-    let isValid = true;
-
-    Object.keys(form).forEach((key) => {
-      if (key !== "_id" && !form[key].trim()) {
-        newErrors[key] = `${key === "firstName" ? "First Name" : key === "lastName" ? "Last Name" : key === "username" ? "Client Username" : key.charAt(0).toUpperCase() + key.slice(1)} is required`;
-        isValid = false;
-      } else {
-        newErrors[key] = "";
-      }
-    });
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleSubmit = (isEdit = false) => {
-    const form = isEdit ? editClientForm : clientForm;
-    if (validateForm(form)) {
-      if (isEdit) {
-        // Dispatch action to update client in backend
-        console.log("Client Form Updated:", editClientForm);
-      } else {
-        // Dispatch action to add client to backend
-        console.log("Client Form Submitted:", clientForm);
-      }
-      handleClose();
-    }
-  };
-
   return (
     <div className="w-full">
       <DeleteClient open={openDeleteModal} setOpen={setOpenDeleteModal} userId={selectedUserId} />
       <Filter open={openFilters} setOpen={setOpenFilters} />
-
-      {/* Add Client Form Modal */}
-      <Dialog
-        scroll="paper"
-        open={openClientModal}
-        TransitionComponent={Transition}
-        keepMounted
-        onClose={handleClose}
-        fullWidth
-        maxWidth="sm"
-        aria-describedby="alert-dialog-slide-description"
-      >
-        <DialogTitle className="flex items-center justify-between">
-          <div className="text-sky-400 font-primary">Add New Client</div>
-          <div className="cursor-pointer" onClick={handleClose}>
-            <PiXLight className="text-[25px]" />
-          </div>
-        </DialogTitle>
-        <DialogContent>
-          <div className="flex flex-col gap-2 p-3 text-gray-500 font-primary">
-            <div className="text-xl flex justify-start items-center gap-2 font-normal">
-              <PiNotepad size={23} />
-              <span>Client Details</span>
-            </div>
-            <Divider />
-            <table className="mt-4 w-full">
-              <tbody>
-                <tr>
-                  <td className="pb-4 text-lg">ID</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={clientForm.uid}
-                      onChange={(e) => handleChange("uid", e.target.value)}
-                      error={!!errors.uid}
-                      helperText={errors.uid}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">First Name</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={clientForm.firstName}
-                      onChange={(e) => handleChange("firstName", e.target.value)}
-                      error={!!errors.firstName}
-                      helperText={errors.firstName}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Last Name</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={clientForm.lastName}
-                      onChange={(e) => handleChange("lastName", e.target.value)}
-                      error={!!errors.lastName}
-                      helperText={errors.lastName}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Client Username</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={clientForm.username}
-                      onChange={(e) => handleChange("username", e.target.value)}
-                      error={!!errors.username}
-                      helperText={errors.username}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Phone</td>
-                  <td className="pb-4">
-                    <TextField
-                      type="number"
-                      size="small"
-                      fullWidth
-                      value={clientForm.phone}
-                      onChange={(e) => handleChange("phone", e.target.value)}
-                      error={!!errors.phone}
-                      helperText={errors.phone}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Email</td>
-                  <td className="pb-4">
-                    <TextField
-                      type="email"
-                      size="small"
-                      fullWidth
-                      placeholder="Optional"
-                      value={clientForm.email}
-                      onChange={(e) => handleChange("email", e.target.value)}
-                      error={!!errors.email}
-                      helperText={errors.email}
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <button
-            onClick={handleClose}
-            className="bg-[#d7d7d7] px-4 py-2 rounded-lg text-gray-500 mt-4 hover:text-white hover:bg-[#6c757d] border-[2px] border-[#efeeee] hover:border-[#d7d7d7] font-thin transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => handleSubmit(false)}
-            className="bg-primary-red px-4 py-2 rounded-lg text-white mt-4 hover:bg-red-400 font-thin"
-          >
-            {isFetching ? "Submitting..." : "Submit"}
-          </button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Edit Client Form Modal */}
-      <Dialog
-        scroll="paper"
-        open={openEditModal}
-        TransitionComponent={Transition}
-        keepMounted
-        onClose={handleClose}
-        fullWidth
-        maxWidth="sm"
-        aria-describedby="alert-dialog-slide-description"
-      >
-        <DialogTitle className="flex items-center justify-between">
-          <div className="text-sky-400 font-primary">Edit Client</div>
-          <div className="cursor-pointer" onClick={handleClose}>
-            <PiXLight className="text-[25px]" />
-          </div>
-        </DialogTitle>
-        <DialogContent>
-          <div className="flex flex-col gap-2 p-3 text-gray-500 font-primary">
-            <div className="text-xl flex justify-start items-center gap-2 font-normal">
-              <PiNotepad size={23} />
-              <span>Client Details</span>
-            </div>
-            <Divider />
-            <table className="mt-4 w-full">
-              <tbody>
-                <tr>
-                  <td className="pb-4 text-lg">ID</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={editClientForm.uid}
-                      onChange={(e) => handleChange("uid", e.target.value, true)}
-                      error={!!errors.uid}
-                      helperText={errors.uid}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">First Name</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={editClientForm.firstName}
-                      onChange={(e) => handleChange("firstName", e.target.value, true)}
-                      error={!!errors.firstName}
-                      helperText={errors.firstName}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Last Name</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={editClientForm.lastName}
-                      onChange={(e) => handleChange("lastName", e.target.value, true)}
-                      error={!!errors.lastName}
-                      helperText={errors.lastName}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Client Username</td>
-                  <td className="pb-4">
-                    <TextField
-                      size="small"
-                      fullWidth
-                      value={editClientForm.username}
-                      onChange={(e) => handleChange("username", e.target.value, true)}
-                      error={!!errors.username}
-                      helperText={errors.username}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Phone</td>
-                  <td className="pb-4">
-                    <TextField
-                      type="number"
-                      size="small"
-                      fullWidth
-                      value={editClientForm.phone}
-                      onChange={(e) => handleChange("phone", e.target.value, true)}
-                      error={!!errors.phone}
-                      helperText={errors.phone}
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td className="pb-4 text-lg">Email</td>
-                  <td className="pb-4">
-                    <TextField
-                      type="email"
-                      size="small"
-                      fullWidth
-                      placeholder="Optional"
-                      value={editClientForm.email}
-                      onChange={(e) => handleChange("email", e.target.value, true)}
-                      error={!!errors.email}
-                      helperText={errors.email}
-                    />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </DialogContent>
-        <DialogActions>
-          <button
-            onClick={handleClose}
-            className="bg-[#d7d7d7] px-4 py-2 rounded-lg text-gray-500 mt-4 hover:text-white hover:bg-[#6c757d] border-[2px] border-[#efeeee] hover:border-[#d7d7d7] font-thin transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => handleSubmit(true)}
-            className="bg-primary-red px-4 py-2 rounded-lg text-white mt-4 hover:bg-red-400 font-thin"
-          >
-            {isFetching ? "Saving..." : "Save"}
-          </button>
-        </DialogActions>
-      </Dialog>
+      <CreateClient open={openAddModal} setOpen={setOpenAddModal} />
+      <EditClient open={openEditModal} setOpen={setOpenEditModal} />
 
       <Topbar />
 
-      {/* Add Client Button */}
       <div className="flex justify-end mb-4 pr-4">
         <button
-          onClick={handleClickOpen}
+          onClick={handleOpenAddModal}
           className="bg-primary-blue hover:bg-blue-500 text-white font-primary px-4 py-2 rounded-lg text-sm shadow-md transition-all"
         >
           + Add Client
